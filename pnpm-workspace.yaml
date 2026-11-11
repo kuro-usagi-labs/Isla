@@ -2,4 +2,5 @@ allowBuilds:
   esbuild: true
   '@ffmpeg-installer/linux-x64': true
   '@ffmpeg-installer/darwin-x64': true
+  '@ffmpeg-installer/darwin-arm64': true
   '@ffmpeg-installer/win32-x64': true

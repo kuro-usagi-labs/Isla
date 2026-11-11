@@ -2,7 +2,7 @@
   "name": "isla-music-player",
   "private": true,
   "version": "1.0.0",
-  "description": "Isla — Premium Floating Offline Music Player for Windows",
+  "description": "Isla — a fluid, floating offline music player",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 1425 --strictPort",
@@ -21,14 +21,18 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@tailwindcss/vite": "^4.1.13",
     "@tauri-apps/cli": "^2.9.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.1.0",
+    "hyperframes": "^0.9.30",
+    "playwright": "^1.65.0",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.3",
     "vite": "^7.2.0",
     "vitest": "^3.2.4"
-  }
+  },
+  "packageManager": "pnpm@12.18.0"
 }

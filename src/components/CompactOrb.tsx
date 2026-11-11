@@ -53,7 +53,7 @@ export function CompactOrb({ player,settings,accentColor,isExpanded,controls,sid
       <defs><linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="var(--isla-liquid-top)"/><stop offset="1" stopColor="var(--isla-liquid-bottom)"/></linearGradient></defs>
       <motion.path d={path} fill={`url(#${gradientId})`} stroke="var(--isla-border-ring)" strokeWidth="0.7"/>
     </motion.svg>
-    <motion.button type="button" data-compact-orb data-island-hit-region
+    <motion.button type="button" data-compact-orb data-island-hit-region data-hit-slop="4"
       aria-label={controls||volumeMorph?'Hide playback controls':'Show playback controls'} aria-expanded={controls || isExpanded}
       title={track ? `${track.title} · ${track.artist}` : 'Isla · Show playback controls'}
       className="absolute top-0 z-20 w-[60px] h-[60px] rounded-full cursor-pointer select-none pointer-events-auto grid place-items-center"
@@ -80,6 +80,7 @@ export function CompactOrb({ player,settings,accentColor,isExpanded,controls,sid
         const value=Math.max(0,Math.min(1,current+(e.deltaY<0?0.03:-0.03)));
         wheel.current={value,at:now};onWheelVolume(value);
       }}>
+      <span aria-hidden="true" className="absolute -inset-1 rounded-full pointer-events-auto" />
       <AnimatePresence initial={false} mode="popLayout">
         <motion.span key={track?.id??'empty'} className="absolute inset-[8px] grid place-items-center pointer-events-none"
           initial={reduced?{opacity:0}:{opacity:0,scale:0.82,filter:'blur(3px)'}} animate={{opacity:1,scale:reduced?1:volumeMorph?0.94:controls?1.035:1,filter:'blur(0px)'}} exit={{opacity:0,scale:reduced?1:0.9}} transition={spring}>

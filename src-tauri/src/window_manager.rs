@@ -33,6 +33,12 @@ pub fn island_contains(bounds: &IslandBounds, regions: &[IslandBounds], x:f64, y
     if regions.is_empty() { bounds.contains(x,y) } else { regions.iter().any(|region|region.contains(x,y)) }
 }
 
+fn ignore_cursor_for_pointer(inside: bool, already_ignoring: bool, button_down: bool) -> bool {
+    // Once a press reaches Isla, retain its mouse-up even if pulse/press morphs
+    // move the visual boundary underneath the stationary pointer.
+    !inside && (already_ignoring || !button_down)
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct MonitorRect {
     pub x: i32,
@@ -662,7 +668,7 @@ pub fn spawn_window_interaction_loop(
                         });
                         let local_x = (cx - state.win_phys_x) as f64 / scale;
                         let local_y = (cy - state.win_phys_y) as f64 / scale;
-                        let should_ignore = !island_contains(&bounds,&state.island_regions,local_x,local_y);
+                        let should_ignore = ignore_cursor_for_pointer(island_contains(&bounds,&state.island_regions,local_x,local_y),state.ignoring_cursor,lbutton_down);
                         if should_ignore != state.ignoring_cursor {
                             state.ignoring_cursor = should_ignore;
                             toggle_ignore_cursor = Some(should_ignore);
@@ -787,6 +793,14 @@ pub fn set_windows_startup(_enabled: bool) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_active_press_keeps_its_release_during_a_pulse() {
+        assert!(!ignore_cursor_for_pointer(false,false,true));
+        assert!(ignore_cursor_for_pointer(false,false,false));
+        assert!(ignore_cursor_for_pointer(false,true,true));
+        assert!(!ignore_cursor_for_pointer(true,true,true));
+    }
 
     #[test]
     fn monitor_query_can_reenter_window_state_without_blocking_ui() {

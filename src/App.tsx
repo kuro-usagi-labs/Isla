@@ -141,7 +141,9 @@ export const App: React.FC = () => {
       const regions = Array.from(shell.querySelectorAll<HTMLElement>('[data-island-hit-region]')).filter(node=>!node.closest('[inert]')).map((node) => {
         const rect=node.getBoundingClientRect();
         const scale=rect.width/Math.max(1,node.offsetWidth);
-        return {x:rect.x,y:rect.y,width:rect.width,height:rect.height,radius:(parseFloat(getComputedStyle(node).borderTopLeftRadius)||0)*scale};
+        const padding=Number(node.dataset.hitSlop??0)*scale;
+        const radius=Math.min((parseFloat(getComputedStyle(node).borderTopLeftRadius)||0)*scale,rect.width/2,rect.height/2);
+        return {x:rect.x-padding,y:rect.y-padding,width:rect.width+padding*2,height:rect.height+padding*2,radius:radius+padding};
       });
       void islaBridge.setIslandBounds({ x: r.x, y: r.y, width: r.width, height: r.height, radius },regions).catch(() => {});
       lastBoundsAt.current = performance.now();

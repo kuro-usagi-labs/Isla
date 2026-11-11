@@ -24,10 +24,21 @@ import type {
 } from '../types/isla';
 import { normalizeEqualizer } from '../utils/equalizer';
 import type { AudioBeat } from '../utils/beat';
+import { createLatestPublisher } from '../utils/latest-publisher';
 
 export function isTauriRuntime(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
+
+const publishIslandBounds = createLatestPublisher(async (geometry: {bounds:IslandBounds; regions:IslandBounds[]; expanded:boolean}) => {
+  if (isTauriRuntime()) await invoke('set_island_bounds', geometry);
+});
+const publishIslandPointer = createLatestPublisher(async (pressed: boolean) => {
+  if (isTauriRuntime()) await invoke('set_island_pointer_pressed', { pressed });
+});
+const publishContextMenu = createLatestPublisher(async (open: boolean) => {
+  if (isTauriRuntime()) await invoke('set_context_menu_open', { open });
+});
 
 const DEFAULT_SETTINGS: AppSettings = {
   equalizer: normalizeEqualizer(),
@@ -99,9 +110,10 @@ export const islaBridge = {
     if (!isTauriRuntime()) return { ...DEFAULT_SETTINGS, equalizer: normalizeEqualizer(settings) };
     return invoke<AppSettings>('save_equalizer', { settings });
   },
-  async setIslandBounds(bounds: IslandBounds, regions: IslandBounds[] = []): Promise<void> {
-    if (isTauriRuntime()) await invoke('set_island_bounds', { bounds,regions });
+  async setIslandBounds(bounds: IslandBounds, regions: IslandBounds[] = [], expanded = false): Promise<void> {
+    await publishIslandBounds({bounds, regions, expanded});
   },
+  setIslandPointerPressed: publishIslandPointer,
   async onPlaybackProgress(handler: (progress: PlayerProgress) => void): Promise<UnlistenFn> {
     if (!isTauriRuntime()) return () => {};
     return listen<PlayerProgress>('isla://playback-progress', (ev) => handler(ev.payload));
@@ -159,7 +171,7 @@ export const islaBridge = {
   async setContextMenuOpen(open: boolean): Promise<void> {
     if (!isTauriRuntime()) return;
     try {
-      await invoke('set_context_menu_open', { open });
+      await publishContextMenu(open);
     } catch {
       // Ignore
     }

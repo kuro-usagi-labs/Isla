@@ -85,12 +85,17 @@ fn get_initial_app_state(state: State<'_, AppState>) -> Result<InitialBootstrapP
 // --- Window Commands ---
 
 #[tauri::command]
-async fn set_island_bounds(state: State<'_, AppState>, bounds: window_manager::IslandBounds, regions: Option<Vec<window_manager::IslandBounds>>) -> Result<(), String> {
+async fn set_island_bounds(state: State<'_, AppState>, bounds: window_manager::IslandBounds, regions: Option<Vec<window_manager::IslandBounds>>, expanded: bool) -> Result<(), String> {
     let regions=regions.unwrap_or_default();
     if !bounds.valid() || regions.len()>2 || regions.iter().any(|r|!r.valid()) { return Err("Invalid island bounds".into()); }
     let mut window = state.window_ctrl.state.lock().map_err(|_| "Window state lock poisoned")?;
-    window.island_bounds = Some(bounds);
-    window.island_regions = regions;
+    window.update_hit_geometry(bounds,regions,expanded);
+    Ok(())
+}
+
+#[tauri::command]
+fn set_island_pointer_pressed(state:State<'_,AppState>,pressed:bool)->Result<(),String>{
+    state.window_ctrl.state.lock().map_err(|_|"Window state lock poisoned")?.owns_pointer_press=pressed;
     Ok(())
 }
 
@@ -1005,6 +1010,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_initial_app_state,
             set_island_bounds,
+            set_island_pointer_pressed,
             set_window_expanded,
             start_interactive_drag,
             set_context_menu_open,

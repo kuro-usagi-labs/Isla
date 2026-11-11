@@ -28,6 +28,7 @@ import { canPulsePill } from './utils/beat';
 import { useBeatPulse } from './hooks/useBeatPulse';
 import { useAudioOutputs } from './hooks/useAudioOutputs';
 import { createIdleCollapse } from './utils/idle-collapse';
+import { measureIslandHitGeometry, islandOwnsPointer } from './utils/island-hit-test';
 
 const INITIAL_SETTINGS: AppSettings = {
   equalizer: normalizeEqualizer(),
@@ -136,16 +137,9 @@ export const App: React.FC = () => {
       boundsFrame.current = null;
       const shell = shellRef.current;
       if (!shell) return;
-      const r = shell.getBoundingClientRect();
-      const radius = (parseFloat(getComputedStyle(shell).borderTopLeftRadius) || 26) * r.width / Math.max(1,shell.offsetWidth);
-      const regions = Array.from(shell.querySelectorAll<HTMLElement>('[data-island-hit-region]')).filter(node=>!node.closest('[inert]')).map((node) => {
-        const rect=node.getBoundingClientRect();
-        const scale=rect.width/Math.max(1,node.offsetWidth);
-        const padding=Number(node.dataset.hitSlop??0)*scale;
-        const radius=Math.min((parseFloat(getComputedStyle(node).borderTopLeftRadius)||0)*scale,rect.width/2,rect.height/2);
-        return {x:rect.x-padding,y:rect.y-padding,width:rect.width+padding*2,height:rect.height+padding*2,radius:radius+padding};
-      });
-      void islaBridge.setIslandBounds({ x: r.x, y: r.y, width: r.width, height: r.height, radius },regions).catch(() => {});
+      const geometry = measureIslandHitGeometry(shell);
+      if (!geometry) return;
+      void islaBridge.setIslandBounds(geometry.bounds,geometry.regions,geometry.expanded).catch(() => {});
       lastBoundsAt.current = performance.now();
     });
   }, []);
@@ -841,10 +835,16 @@ export const App: React.FC = () => {
       <motion.div className="isla-pulse-stage relative shrink-0 w-[412px] h-[388px]" style={{ ...beatPulse, transformOrigin: pulseOrigin }}>
       <motion.div
         ref={shellRef}
+        data-island-expanded={expanded}
         data-compact-phase={settings.pillSize==='compact'?compactFlow.phase:undefined}
         onFocusCapture={() => { focusWasInside.current = true; }}
         onKeyDownCapture={() => { focusWasInside.current = true; }}
-        onPointerDownCapture={() => { focusWasInside.current = false; }}
+        onPointerDownCapture={(event) => {
+          focusWasInside.current = false;
+          if (event.button === 0) void islaBridge.setIslandPointerPressed(islandOwnsPointer(event.currentTarget,event.clientX,event.clientY)).catch(() => {});
+        }}
+        onPointerUpCapture={() => { void islaBridge.setIslandPointerPressed(false).catch(() => {}); }}
+        onPointerCancelCapture={() => { void islaBridge.setIslandPointerPressed(false).catch(() => {}); }}
         onUpdate={(latest) => {
           if(typeof latest.width==='number')liveShellWidth.set(latest.width);
           if (typeof latest.x === 'number' && typeof latest.width === 'number') pulseCenterX.set(latest.x+latest.width/2);
@@ -869,6 +869,7 @@ export const App: React.FC = () => {
         onContextMenu={(e) => {
           e.preventDefault();
           e.stopPropagation();
+          if (!islandOwnsPointer(e.currentTarget,e.clientX,e.clientY)) return;
           setContextMenu({ x: e.clientX, y: e.clientY });
           void islaBridge.setContextMenuOpen(true);
         }}

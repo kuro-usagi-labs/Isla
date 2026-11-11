@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.0.2] — 2026-11-12
+
+### Click-through hotfix
+
+- Clear the previous panel hitbox and transient pointer/menu capture state when switching window modes.
+- Serialize/coalesce animated hit-region updates and reject geometry from a previous expanded/collapsed mode.
+- Retain pointer release only for presses originating on visible Isla UI; background clicks no longer inherit capture from the previous window state.
+- Apply native click-through through one owner, retry failed updates, and refresh the flag on mode changes.
+- Exclude hidden, inert and zero-size regions from hit testing.
+- Remove the technical "The showcase" section and render commands from the main README.
+
+Validation: 61 frontend tests and 42 native tests passed locally, including the
+new click-through and IPC regression cases. Full manual desktop input verification
+was not completed.
+
 ## [1.0.1] — 2026-11-12
 
 ### Playback performance

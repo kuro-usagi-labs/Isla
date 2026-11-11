@@ -33,10 +33,20 @@ pub fn island_contains(bounds: &IslandBounds, regions: &[IslandBounds], x:f64, y
     if regions.is_empty() { bounds.contains(x,y) } else { regions.iter().any(|region|region.contains(x,y)) }
 }
 
-fn ignore_cursor_for_pointer(inside: bool, already_ignoring: bool, button_down: bool) -> bool {
-    // Once a press reaches Isla, retain its mouse-up even if pulse/press morphs
-    // move the visual boundary underneath the stationary pointer.
-    !inside && (already_ignoring || !button_down)
+fn ignore_cursor_for_pointer(inside: bool, owns_press: bool, button_down: bool) -> bool {
+    // Only a press that actually reached visible Isla UI owns its mouse-up.
+    // A global mouse-down over transparent canvas must not capture a Windows click.
+    !inside && !(owns_press && button_down)
+}
+
+#[derive(Default)]
+struct CursorIgnoreSync { applied: Option<(bool,u64)> }
+impl CursorIgnoreSync {
+    fn apply<E>(&mut self,ignore:bool,revision:u64,set:impl FnOnce(bool)->Result<(),E>) {
+        if self.applied!=Some((ignore,revision)) && set(ignore).is_ok() {
+            self.applied=Some((ignore,revision));
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -73,6 +83,8 @@ pub struct WindowStateMemory {
     pub anchor_offset_x: i32,
     pub anchor_offset_y: i32,
     pub ignoring_cursor: bool,
+    pub owns_pointer_press: bool,
+    pub hit_test_revision: u64,
     pub context_menu_open: bool,
     pub drag_session: Option<DragSession>,
 }
@@ -96,6 +108,8 @@ impl WindowController {
                 anchor_offset_x: 88,
                 anchor_offset_y: 0,
                 ignoring_cursor: false,
+                owns_pointer_press: false,
+                hit_test_revision: 0,
                 context_menu_open: false,
                 drag_session: None,
             }),
@@ -117,6 +131,36 @@ impl WindowController {
         let dragging = { self.state.lock().ok()?.drag_session.is_some() };
         // Tauri monitor getters synchronously wait for the UI thread. Never retain this guard.
         dragging.then(query)
+    }
+}
+
+impl WindowStateMemory {
+    fn set_mode(&mut self,expanded:bool,pill_size:&str) {
+        self.expanded=expanded;
+        self.pill_size=pill_size.into();
+        self.island_bounds=None;
+        self.island_regions.clear();
+        self.owns_pointer_press=false;
+        self.context_menu_open=false;
+        self.hit_test_revision=self.hit_test_revision.wrapping_add(1);
+    }
+
+    pub fn update_hit_geometry(&mut self,bounds:IslandBounds,regions:Vec<IslandBounds>,expanded:bool)->bool {
+        if self.expanded!=expanded {return false;}
+        self.island_bounds=Some(bounds);
+        self.island_regions=regions;
+        true
+    }
+
+    fn hit_bounds(&self)->IslandBounds {
+        let (w,h)=get_pill_card_dimensions(&self.pill_size);
+        self.island_bounds.unwrap_or(IslandBounds {
+            x:SHADOW_GUTTER as f64+if self.expanded{0.0}else{self.anchor_offset_x as f64},
+            y:SHADOW_GUTTER as f64+if self.expanded{0.0}else{self.anchor_offset_y as f64},
+            width:if self.expanded{412.0}else{w as f64},
+            height:if self.expanded{268.0}else{h as f64},
+            radius:if self.expanded{28.0}else{h as f64/2.0},
+        })
     }
 }
 
@@ -401,7 +445,7 @@ fn is_left_mouse_button_down() -> bool {
 }
 
 pub fn apply_window_mode(
-    window: &WebviewWindow,
+    _window: &WebviewWindow,
     controller: &WindowController,
     _db: &Database,
     expanded: bool,
@@ -413,11 +457,7 @@ pub fn apply_window_mode(
             .state
             .lock()
             .map_err(|_| "Window state lock poisoned")?;
-        state.expanded = expanded;
-        state.pill_size = pill_size.to_string();
-        if expanded {
-            state.ignoring_cursor = false;
-        }
+        state.set_mode(expanded,pill_size);
         (
             state.win_phys_x,
             state.win_phys_y,
@@ -425,10 +465,6 @@ pub fn apply_window_mode(
             state.anchor_offset_y,
         )
     };
-
-    if expanded {
-        let _ = window.set_ignore_cursor_events(false);
-    }
 
     Ok(WindowGeometryResult {
         expanded,
@@ -443,7 +479,7 @@ pub fn apply_window_mode(
 }
 
 pub fn set_context_menu_open_state(
-    window: &WebviewWindow,
+    _window: &WebviewWindow,
     controller: &WindowController,
     open: bool,
 ) {
@@ -452,9 +488,6 @@ pub fn set_context_menu_open_state(
         if open {
             state.ignoring_cursor = false;
         }
-    }
-    if open {
-        let _ = window.set_ignore_cursor_events(false);
     }
 }
 
@@ -467,10 +500,9 @@ pub fn begin_interactive_drag(
         return Ok(());
     };
 
-    let _ = window.set_ignore_cursor_events(false);
-
     let geometry = if let Ok(mut state) = controller.state.lock() {
         state.ignoring_cursor = false;
+        state.owns_pointer_press = true;
         state.drag_session = Some(DragSession {
             start_cursor_x: cx,
             start_cursor_y: cy,
@@ -501,6 +533,7 @@ pub fn spawn_window_interaction_loop(
         let mut monitors = collect_monitor_rects(&window);
         let mut last_monitor_refresh = Instant::now();
         let mut was_dragging = false;
+        let mut cursor_ignore = CursorIgnoreSync::default();
         loop {
             let scale = window.scale_factor().unwrap_or(1.0);
             let cursor = get_cursor_pos_win32();
@@ -518,10 +551,12 @@ pub fn spawn_window_interaction_loop(
             let mut move_win_to: Option<(i32, i32, i32, i32)> = None;
             let mut emit_geom: Option<WindowGeometryResult> = None;
             let mut save_pill_pos: Option<(i32, i32)> = None;
-            let mut toggle_ignore_cursor: Option<bool> = None;
+            let mut toggle_ignore_cursor: Option<(bool,u64)> = None;
 
             if let Ok(mut state) = controller.state.lock() {
+                if !lbutton_down { state.owns_pointer_press=false; }
                 if let Some(session) = state.drag_session {
+                    state.ignoring_cursor=false;
                     sleep_ms = 8; // ~144Hz tracking during active drag
                     if !lbutton_down {
                         // Mouse button released -> finish drag session
@@ -655,31 +690,25 @@ pub fn spawn_window_interaction_loop(
                     if state.context_menu_open {
                         if state.ignoring_cursor {
                             state.ignoring_cursor = false;
-                            toggle_ignore_cursor = Some(false);
                         }
                     } else if let Some((cx, cy)) = cursor {
-                        let (w, h) = get_pill_card_dimensions(&state.pill_size);
-                        let bounds = state.island_bounds.unwrap_or(IslandBounds {
-                            x: SHADOW_GUTTER as f64 + if state.expanded { 0.0 } else { state.anchor_offset_x as f64 },
-                            y: SHADOW_GUTTER as f64 + if state.expanded { 0.0 } else { state.anchor_offset_y as f64 },
-                            width: if state.expanded { 412.0 } else { w as f64 },
-                            height: if state.expanded { 388.0 } else { h as f64 },
-                            radius: if state.expanded { 26.0 } else { h as f64 / 2.0 },
-                        });
+                        let bounds = state.hit_bounds();
                         let local_x = (cx - state.win_phys_x) as f64 / scale;
                         let local_y = (cy - state.win_phys_y) as f64 / scale;
-                        let should_ignore = ignore_cursor_for_pointer(island_contains(&bounds,&state.island_regions,local_x,local_y),state.ignoring_cursor,lbutton_down);
+                        let should_ignore = ignore_cursor_for_pointer(island_contains(&bounds,&state.island_regions,local_x,local_y),state.owns_pointer_press,lbutton_down);
                         if should_ignore != state.ignoring_cursor {
                             state.ignoring_cursor = should_ignore;
-                            toggle_ignore_cursor = Some(should_ignore);
                         }
                     }
                 }
+                toggle_ignore_cursor=Some((state.ignoring_cursor,state.hit_test_revision));
             }
 
             // Perform Win32 / Tauri calls outside the mutex lock
-            if let Some(ignore) = toggle_ignore_cursor {
-                let _ = window.set_ignore_cursor_events(ignore);
+            if let Some((ignore,revision)) = toggle_ignore_cursor {
+                // This loop is the only writer of the native flag. A failed OS
+                // update is retried; it is never recorded as successfully applied.
+                cursor_ignore.apply(ignore,revision,|ignore|window.set_ignore_cursor_events(ignore));
             }
             if let Some((wx, wy, ww, wh)) = move_win_to {
                 set_window_rect_atomic(&window, wx, wy, ww, wh);
@@ -796,10 +825,48 @@ mod tests {
 
     #[test]
     fn an_active_press_keeps_its_release_during_a_pulse() {
-        assert!(!ignore_cursor_for_pointer(false,false,true));
-        assert!(ignore_cursor_for_pointer(false,false,false));
-        assert!(ignore_cursor_for_pointer(false,true,true));
+        assert!(!ignore_cursor_for_pointer(false,true,true));
+        assert!(ignore_cursor_for_pointer(false,true,false));
+        assert!(ignore_cursor_for_pointer(false,false,true));
         assert!(!ignore_cursor_for_pointer(true,true,true));
+    }
+
+    #[test]
+    fn collapse_discards_the_old_panel_and_transient_capture_state() {
+        let controller=WindowController::new(true,"compact".into());
+        let mut state=controller.state.lock().unwrap();
+        state.island_bounds=Some(IslandBounds{x:48.0,y:48.0,width:412.0,height:388.0,radius:28.0});
+        state.island_regions=vec![state.island_bounds.unwrap()];
+        state.context_menu_open=true;state.owns_pointer_press=true;
+        state.set_mode(false,"compact");
+        assert!(state.island_bounds.is_none()&&state.island_regions.is_empty());
+        assert!(!state.context_menu_open&&!state.owns_pointer_press);
+        assert_eq!(state.hit_bounds().width,60.0);
+        assert!(!island_contains(&state.hit_bounds(),&state.island_regions,350.0,260.0));
+        assert!(ignore_cursor_for_pointer(false,state.owns_pointer_press,true));
+    }
+
+    #[test]
+    fn late_expanded_geometry_cannot_restore_an_invisible_panel_hitbox() {
+        let controller=WindowController::new(false,"compact".into());
+        let mut state=controller.state.lock().unwrap();
+        let small=state.hit_bounds();
+        assert!(state.update_hit_geometry(small,vec![small],false));
+        assert!(!state.update_hit_geometry(IslandBounds{x:48.0,y:48.0,width:412.0,height:388.0,radius:28.0},vec![],true));
+        assert_eq!(state.hit_bounds().width,60.0);
+        assert_eq!(state.island_regions.len(),1);
+    }
+
+    #[test]
+    fn native_ignore_flag_retries_failures_and_refreshes_after_mode_changes() {
+        let mut sync=CursorIgnoreSync::default();let mut writes=0;
+        sync.apply(true,0,|_|{writes+=1;Err(())});
+        assert!(sync.applied.is_none());
+        sync.apply(true,0,|_|{writes+=1;Ok::<_,()>(())});
+        sync.apply(true,0,|_|{writes+=1;Ok::<_,()>(())});
+        assert_eq!(writes,2);
+        sync.apply(true,1,|_|{writes+=1;Ok::<_,()>(())});
+        assert_eq!(writes,3);
     }
 
     #[test]

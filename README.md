@@ -46,23 +46,8 @@ pnpm tauri dev
 pnpm tauri build
 ```
 
-The Windows build uses NSIS. macOS builds require Xcode tools; Linux needs WebKitGTK 4.1, GTK/AppIndicator and ALSA development libraries. See [release automation](.github/workflows/release.yml) for the exact runner setup and [release notes](docs/releases/v1.0.1.md) for known limitations.
+The Windows build uses NSIS. macOS builds require Xcode tools; Linux needs WebKitGTK 4.1, GTK/AppIndicator and ALSA development libraries. See [release automation](.github/workflows/release.yml) for the exact runner setup and [release notes](docs/releases/v1.0.2.md) for known limitations.
 
 The [playback performance audit](docs/performance/2026-11-12-playback.md) documents the latest audio changes, measurements, reproducible native probes and testing limits.
-
-## The showcase
-
-The [editable launch film](media/showcase/) combines camera direction and rendering adapted from [Barty-Bart/motion-graphics](https://github.com/Barty-Bart/motion-graphics) with [Motion](https://github.com/motiondivision/motion) springs. The production React UI and geometry animate through split, merge, expand, EQ, seek, volume and theme changes. A damped camera follows the interactions through macro shots, pans and pull-backs. The finished film is 1080p at 60 fps with shutter sampling, an original score and CC0 interaction sounds. [Hyperframes](https://github.com/heygen-com/hyperframes) provides the editable timeline preview and checks.
-
-```sh
-pnpm build
-pnpm showcase:build
-pnpm showcase:preview
-# FFmpeg and ffprobe must be available on PATH:
-pnpm showcase:check
-pnpm showcase:draft
-pnpm showcase:render
-pnpm showcase:package
-```
 
 Built with Tauri 2, Rust, React, TypeScript, Motion, Rodio/CPAL and SQLite. Local music stays local.

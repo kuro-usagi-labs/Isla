@@ -1,0 +1,189 @@
+[
+  {
+    "id": "flat",
+    "name": "Flat",
+    "description": "Just as it was recorded",
+    "bandsDb": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "id": "bass-boost",
+    "name": "Bass Boost",
+    "description": "A deeper, warmer low end",
+    "bandsDb": [
+      6,
+      5,
+      4,
+      2,
+      0,
+      -1,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "id": "bass-reducer",
+    "name": "Bass Reducer",
+    "description": "A lighter, cleaner foundation",
+    "bandsDb": [
+      -6,
+      -5,
+      -4,
+      -2,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "id": "treble-boost",
+    "name": "Treble Boost",
+    "description": "More air and detail",
+    "bandsDb": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      3,
+      4,
+      5,
+      5
+    ]
+  },
+  {
+    "id": "vocal",
+    "name": "Vocal",
+    "description": "Bring the voice into focus",
+    "bandsDb": [
+      -3,
+      -2,
+      -1,
+      1,
+      3,
+      4,
+      3,
+      1,
+      0,
+      -1
+    ]
+  },
+  {
+    "id": "acoustic",
+    "name": "Acoustic",
+    "description": "Warmth with a little sparkle",
+    "bandsDb": [
+      3,
+      2,
+      1,
+      0,
+      1,
+      2,
+      3,
+      2,
+      2,
+      1
+    ]
+  },
+  {
+    "id": "electronic",
+    "name": "Electronic",
+    "description": "Deep lows, clear highs",
+    "bandsDb": [
+      5,
+      4,
+      2,
+      0,
+      -2,
+      0,
+      2,
+      3,
+      4,
+      4
+    ]
+  },
+  {
+    "id": "rock",
+    "name": "Rock",
+    "description": "Punch, presence and energy",
+    "bandsDb": [
+      4,
+      3,
+      1,
+      -1,
+      -2,
+      1,
+      3,
+      4,
+      3,
+      2
+    ]
+  },
+  {
+    "id": "jazz",
+    "name": "Jazz",
+    "description": "Full-bodied and open",
+    "bandsDb": [
+      3,
+      2,
+      1,
+      1,
+      -1,
+      -1,
+      0,
+      2,
+      3,
+      3
+    ]
+  },
+  {
+    "id": "classical",
+    "name": "Classical",
+    "description": "A gentle, spacious contour",
+    "bandsDb": [
+      3,
+      2,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  {
+    "id": "late-night",
+    "name": "Late Night",
+    "description": "Softer edges, clearer voices",
+    "bandsDb": [
+      -4,
+      -3,
+      -1,
+      1,
+      2,
+      2,
+      1,
+      0,
+      -2,
+      -3
+    ]
+  }
+]

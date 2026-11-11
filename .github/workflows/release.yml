@@ -27,7 +27,8 @@ jobs:
             const fs = require('fs');
             const version = JSON.parse(fs.readFileSync('package.json')).version;
             const tag = `v${version}`;
-            const body = fs.readFileSync('docs/releases/v1.0.0.md', 'utf8');
+            if (context.ref.startsWith('refs/tags/') && context.ref !== `refs/tags/${tag}`) throw new Error('Tag and package version disagree');
+            const body = fs.readFileSync(`docs/releases/${tag}.md`, 'utf8');
             let release;
             try { const list=(await github.rest.repos.listReleases({...context.repo})).data; release=list.filter(r=>r.tag_name===tag).sort((a,b)=>b.assets.length-a.assets.length)[0]; if(!release)throw {status:404}; }
             catch(e) { if(e.status!==404) throw e; release = (await github.rest.repos.createRelease({...context.repo, tag_name:tag, target_commitish:context.sha, name:`Isla ${version}`, body, draft:true})).data; }
@@ -63,12 +64,14 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libasound2-dev libxdo-dev
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
+      - run: cargo test --locked --manifest-path src-tauri/Cargo.toml --bin isla
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_SIGNING_IDENTITY: '-'
         with:
           releaseId: ${{ needs.prepare.outputs.release_id }}
+          tagName: ${{ needs.prepare.outputs.tag }}
           releaseDraft: true
           args: ${{ matrix.args }}
   publish:
@@ -80,6 +83,14 @@ jobs:
           script: |
             const release_id = Number('${{ needs.prepare.outputs.release_id }}');
             const assets = (await github.rest.repos.listReleaseAssets({...context.repo, release_id})).data;
-            const required = [/x64-setup\.exe$/, /aarch64\.dmg$/, /x64\.dmg$/, /\.deb$/, /\.AppImage$/];
-            if (!required.every(pattern=>assets.some(a=>pattern.test(a.name)))) throw new Error('Expected Windows, two macOS architectures, Debian and AppImage assets');
+            const tag = '${{ needs.prepare.outputs.tag }}';
+            const version = tag.slice(1);
+            const names = [`Isla_${version}_x64-setup.exe`, `Isla_${version}_aarch64.dmg`, `Isla_${version}_x64.dmg`, `Isla_${version}_amd64.deb`, `Isla_${version}_amd64.AppImage`];
+            const installers = names.map(name => assets.find(asset => asset.name === name));
+            if (installers.some(asset => !asset)) throw new Error('Expected Windows, two macOS architectures, Debian and AppImage installers');
+            if (installers.some(asset => !/^sha256:[a-f0-9]{64}$/.test(asset.digest || ''))) throw new Error('Installer SHA256 digest unavailable');
+            const sums = Buffer.from(installers.sort((a,b) => a.name.localeCompare(b.name)).map(asset => `${asset.digest.slice(7)}  ${asset.name}`).join('\n') + '\n');
+            const previous = assets.find(asset => asset.name === 'SHA256SUMS.txt');
+            if (previous) await github.rest.repos.deleteReleaseAsset({...context.repo, asset_id:previous.id});
+            await github.rest.repos.uploadReleaseAsset({...context.repo, release_id, name:'SHA256SUMS.txt', headers:{'content-type':'text/plain','content-length':sums.length}, data:sums});
             await github.rest.repos.updateRelease({...context.repo, release_id, tag_name:'${{ needs.prepare.outputs.tag }}', draft:false, make_latest:'true'});

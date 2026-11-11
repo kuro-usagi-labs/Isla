@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { version as appVersion } from '../../package.json';
 import {
   FolderPlus,
   HardDrive,
@@ -678,8 +679,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             color: 'var(--isla-text-secondary)',
           }}
         >
-          <strong>Isla v1.0.0</strong> · Premium Floating Offline Music Player for
-          Windows
+          <strong>Isla v{appVersion}</strong> · Floating Offline Music Player
         </div>
       </section>
     </div>

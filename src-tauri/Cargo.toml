@@ -1,6 +1,6 @@
 [package]
 name = "isla"
-version = "1.0.0"
+version = "1.0.1"
 description = "Isla — Premium Floating Offline Music Player for Windows"
 authors = ["Isla Desktop Team"]
 edition = "2021"

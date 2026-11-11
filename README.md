@@ -46,7 +46,7 @@ pnpm tauri dev
 pnpm tauri build
 ```
 
-The Windows build uses NSIS. macOS builds require Xcode tools; Linux needs WebKitGTK 4.1, GTK/AppIndicator and ALSA development libraries. See [release automation](.github/workflows/release.yml) for the exact runner setup and [release notes](docs/releases/v1.0.0.md) for known limitations.
+The Windows build uses NSIS. macOS builds require Xcode tools; Linux needs WebKitGTK 4.1, GTK/AppIndicator and ALSA development libraries. See [release automation](.github/workflows/release.yml) for the exact runner setup and [release notes](docs/releases/v1.0.1.md) for known limitations.
 
 The [playback performance audit](docs/performance/2026-11-12-playback.md) documents the latest audio changes, measurements, reproducible native probes and testing limits.
 

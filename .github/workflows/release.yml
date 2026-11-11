@@ -28,11 +28,11 @@ jobs:
             const tag = `v${version}`;
             const body = fs.readFileSync('docs/releases/v1.0.0.md', 'utf8');
             let release;
-            try { release = (await github.rest.repos.getReleaseByTag({...context.repo, tag})).data; }
+            try { const list=(await github.rest.repos.listReleases({...context.repo})).data; release=list.filter(r=>r.tag_name===tag).sort((a,b)=>b.assets.length-a.assets.length)[0]; if(!release)throw {status:404}; }
             catch(e) { if(e.status!==404) throw e; release = (await github.rest.repos.createRelease({...context.repo, tag_name:tag, target_commitish:context.sha, name:`Isla ${version}`, body, draft:true})).data; }
             core.setOutput('id', release.id);
             const platform = context.payload.inputs?.platform || 'all';
-            const targets = [{os:'windows-latest',args:'--bundles nsis'},{os:'macos-latest',args:'--target aarch64-apple-darwin --bundles dmg'},{os:'macos-latest',args:'--target x86_64-apple-darwin --bundles dmg'},{os:'ubuntu-22.04',args:'--bundles deb,appimage'}];
+            const targets = [{os:'windows-latest',args:'--bundles nsis'},{os:'macos-15',args:'--target aarch64-apple-darwin --bundles dmg'},{os:'macos-15',args:'--target x86_64-apple-darwin --bundles dmg'},{os:'ubuntu-22.04',args:'--bundles deb,appimage'}];
             core.setOutput('matrix', {include: targets.filter(t=>platform==='all'||t.os.startsWith(platform))});
   build:
     needs: prepare

@@ -1,0 +1,73 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=1920,height=1080">
+<link rel="stylesheet" href="assets/app.css"><script src="assets/gsap.min.js"></script><script src="assets/motion.min.js"></script><script src="assets/production-geometry.js"></script>
+<style>
+@font-face{font-family:Inter;src:url('assets/inter-regular.woff2')}@font-face{font-family:Inter;src:url('assets/inter-semibold.woff2');font-weight:600}
+*{box-sizing:border-box}html,body{margin:0;width:1920px;height:1080px;overflow:hidden;font-family:Inter,sans-serif}#root{width:1920px;height:1080px;background:#f3f2f0;color:#25222c}.clip{position:absolute;inset:0}#brand{position:absolute;left:112px;top:86px;display:flex;align-items:center;gap:18px;font-size:30px;font-weight:600;letter-spacing:-1px}#brand img{width:54px;height:54px;border-radius:14px}#caption{position:absolute;bottom:86px;left:0;width:1920px;text-align:center;font-size:25px;color:#76717d;letter-spacing:-.3px}#stage{position:absolute;left:960px;top:525px;width:0;height:0}#island{position:absolute;left:0;top:0;isolation:isolate;transform-origin:top left}#skin{position:absolute;inset:0;border-radius:inherit;background:var(--isla-bg-surface);border:1px solid var(--isla-border-ring);box-shadow:0 12px 36px #21163520;pointer-events:none}#orb-ui{position:absolute;inset:0;z-index:4;pointer-events:none}#orb-ui [data-compact-orb]{pointer-events:none!important}#orb-ui .isla-liquid-skin{filter:drop-shadow(0 9px 16px #18102624)}#full-ui{position:absolute;left:0;top:0;width:412px;height:268px;transform-origin:center}#full-ui .xp-root{height:268px!important;position:relative!important;inset:0!important;overflow:visible!important}#mini-ui{position:absolute;left:0;top:0;width:412px;height:88px;overflow:hidden}#mini-ui .xp-root{height:388px!important;position:relative!important;inset:0!important}#eq-drawer{position:absolute;left:0;top:88px;width:412px;height:300px;padding:12px 18px 16px;transform-origin:top center}#eq-drawer .drawer-title{font-size:12px;font-weight:600;display:flex;justify-content:space-between;padding:0 0 8px}#volume-ui{position:absolute;left:76px;right:18px;top:0;height:60px;display:flex;align-items:center;gap:11px;color:var(--isla-text-primary)}#volume-ui svg{width:20px;height:20px;color:#9b83e6}#volume-ui .volume-main{flex:1}#volume-ui .number{font-size:12px;font-weight:600;margin-bottom:7px}#volume-ui .rail{height:4px;border-radius:4px;background:var(--isla-bg-active);overflow:hidden}#volume-ui .fill{height:100%;background:#9b83e6;transform-origin:left}#pointer{position:absolute;width:22px;height:27px;z-index:10;filter:drop-shadow(0 2px 3px #0003);transform-origin:top left;pointer-events:none}#tap{position:absolute;width:34px;height:34px;border:1.5px solid #a58ee2;border-radius:50%;pointer-events:none;z-index:9}.eq-inspector{opacity:1!important}#mini-ui .xp-drawer{display:none!important}.eq-curve .eq-inspector{opacity:1!important}
+</style></head><body>
+<main id="root" data-composition-id="main" data-duration="24" data-width="1920" data-height="1080" data-fps="30">
+<section id="showcase" class="clip" data-start="0" data-duration="24" data-track-index="0" data-layout-allow-overlap>
+<div id="brand"><img src="assets/isla.png" alt="Isla">Isla</div>
+<div id="stage"><div id="island">
+<div id="skin"></div><div id="orb-ui"><!-- UI:controls --></div>
+<div id="full-ui"><!-- UI:player --></div>
+<div id="mini-ui"><!-- UI:mini --></div>
+<div id="eq-drawer"><div class="drawer-title"><span>Equalizer</span><span>×</span></div><!-- UI:eq --></div>
+<div id="volume-ui"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m11 5-6 4H2v6h3l6 4zM15 8c3 2 3 6 0 8M18 4c6 4 6 12 0 16"/></svg><div class="volume-main"><div class="number">72%</div><div class="rail"><div class="fill"></div></div></div></div>
+</div></div>
+<svg id="pointer" viewBox="0 0 22 27"><path d="M2 2 19 15l-8 1-4 8z" fill="#fff" stroke="#292332" stroke-width="1.6" stroke-linejoin="round"/></svg><div id="tap"></div>
+<div id="caption">Offline music. Within reach.</div>
+</section><audio id="score" class="clip" data-start="0" data-duration="24" data-track-index="1" src="assets/isla-original-score.wav" data-volume="0.8"></audio>
+</main>
+<script>
+const $=s=>document.querySelector(s),all=s=>[...document.querySelectorAll(s)];
+const island=$('#island'),stage=$('#stage'),skin=$('#skin'),orb=$('#orb-ui'),full=$('#full-ui'),mini=$('#mini-ui'),eq=$('#eq-drawer'),volume=$('#volume-ui');
+const liquid=orb.querySelector('[data-liquid-surface]'),liquidPath=liquid.querySelector('path'),controls=orb.querySelector('[aria-label="Playback controls"]'),foreground=controls.firstElementChild;
+const spring=Motion.spring({keyframes:[0,1],stiffness:240,damping:26,mass:.85});
+const clamp=x=>Math.max(0,Math.min(1,x));
+const S=(t,start,speed=1)=>t<start?0:clamp(spring.next((t-start)*1000*speed).value);
+const blend=(a,b,p)=>a+(b-a)*p;
+const pulse=t=>Math.exp(-((t%0.625)/.14));
+const palette={ '--isla-liquid-top':['#ffffff','#292532'],'--isla-liquid-bottom':['#f7f8fc','#1c1925'],'--isla-text-primary':['#171717','#faf7ff'],'--isla-text-secondary':['#686674','#c0b8d0'],'--isla-text-muted':['#6d6876','#a69db5'],'--isla-bg-elevated':['#ffffff','#292532'],'--isla-bg-active':['#eae7f1','#3b344c'],'--isla-bg-hover':['#f0edf6','#342e42'],'--isla-border-ring':['#dedbe5','#494152'],'--isla-divider':['#e3dfe9','#433b4f']};
+const mixers=Object.fromEntries(Object.entries(palette).map(([k,v])=>[k,Motion.mix(v[0],v[1])]));
+const bg=Motion.mix('#f3f2f0','#17151d'),ink=Motion.mix('#25222c','#f4f0fc'),muted=Motion.mix('#76717d','#aaa0b9');
+const bands=all('#eq-drawer .eq-band');const paths=all('#eq-drawer .eq-curve path');
+const playSVG='<svg viewBox="0 0 24 24" width="19" height="19"><path d="M6 3 21 12 6 21Z" fill="currentColor"/></svg>';
+const pauseSVG=controls.querySelector('[data-pill-play]').innerHTML;
+function renderAt(t){
+ let split=S(t,1.15)-S(t,3.55)+S(t,15.5)-S(t,17.6);
+ let expand=S(t,4.6)-S(t,14.1),drawer=S(t,8.2)-S(t,11.85);
+ let vol=S(t,18.3)-S(t,20.7),dark=S(t,12.6,.8);
+ split=clamp(split);expand=clamp(expand);drawer=clamp(drawer);vol=clamp(vol);
+ const w=blend(60+164*Math.max(split,vol),412,expand),h=blend(60,268+120*drawer,expand);
+ const zoom=blend(2.85,2.1,expand*drawer),beat=(1-expand)*.028*pulse(t);
+ stage.style.transform=`scale(${zoom*(1+beat)})`;
+ island.style.width=w+'px';island.style.height=h+'px';island.style.transform=`translate(${-w/2}px,${-h/2}px)`;island.style.borderRadius=blend(30,28,expand)+'px';
+ for(const[k,mix]of Object.entries(mixers))island.style.setProperty(k,mix(dark));
+ island.style.setProperty('--isla-bg-surface',`linear-gradient(180deg,${mixers['--isla-liquid-top'](dark)},${mixers['--isla-liquid-bottom'](dark)})`);
+ $('#root').style.setProperty('background-color',bg(dark),'important');$('#root').style.color=ink(dark);$('#caption').style.color=muted(dark);
+ skin.style.opacity=String(Math.max(expand,vol));
+ const f=IslaGeometry.liquidCompactFrame(split,'right');liquid.setAttribute('width',60+164*split);liquid.style.width=(60+164*split)+'px';liquid.setAttribute('viewBox',`0 0 ${60+164*split} 60`);liquidPath.setAttribute('d',f.path);
+ liquid.style.opacity=String(1-vol);controls.style.left=f.controlsX+'px';controls.style.width=f.controlsWidth+'px';controls.style.opacity=String(clamp((split-.08)/.5));foreground.style.transform=`scale(${.16+.84*split})`;
+ orb.style.opacity=String(1-clamp(expand/.25));orb.querySelector('[data-compact-orb]').style.transform=`scale(${1+.025*pulse(t)})`;
+ const ring=orb.querySelector('circle[pathLength]');ring.style.strokeDashoffset=String(1-(.28+t*.004));
+ const scale=.12+.88*expand;full.style.transform=`translate(${w/2-206}px,${h/2-134}px) scale(${scale})`;full.style.opacity=String(clamp(expand/.22)*(1-drawer));
+ full.querySelector('.xp-progress-track > div').style.transform=`scaleX(${blend(.35,.63,S(t,6.65))})`;full.querySelector('.xp-progress-thumb').style.left=blend(35,63,S(t,6.65))+'%';
+ mini.style.opacity=String(drawer*expand);mini.style.transform=`translateY(${(1-drawer)*-12}px) scale(${.94+.06*drawer})`;
+ eq.style.opacity=String(drawer*expand);eq.style.transform=`translateY(${(1-drawer)*-30}px) scale(${.94+.06*drawer})`;
+ const gainMorph=S(t,9.4)-S(t,11.15);const gains=[4,3,1,0,-1,-1,0,2,3,4].map((g,i)=>blend(g,[7,5,2,-1,-2,-1,1,3,5,6][i],gainMorph));
+ bands.forEach((b,i)=>{const y=4+(12-gains[i])/24*70;b.querySelector('.eq-visual-thumb').style.transform=`translateY(${y-4}px)`;b.querySelector('.eq-gain').textContent=(gains[i]>0?'+':'')+Math.round(gains[i]);const fill=b.querySelector('.eq-track-fill');fill.style.transform=`translateY(${Math.min(y,39)}px)`;fill.style.height=Math.abs(y-39)+'px';});
+ const curve=IslaGeometry.eqCurvePath(gains);paths[1].setAttribute('d',curve+' L332,46 L8,46 Z');paths[2].setAttribute('d',curve);
+ const v=blend(.72,.48,S(t,19));volume.style.opacity=String(vol);volume.querySelector('.number').textContent=Math.round(v*100)+'%';volume.querySelector('.fill').style.transform=`scaleX(${v})`;
+ const paused=t>=2.5&&t<3.4;controls.querySelector('[data-pill-play]').innerHTML=paused?playSVG:pauseSVG;
+ let point=null,click=0;
+ if(t>2.1&&t<3.3){const p=S(t,2.1);point=[blend(1280,960+6*zoom,p),blend(700,525,p)];click=S(t,2.48)-S(t,2.7);}
+ if(t>6.05&&t<7.65){const p=S(t,6.05);point=[960+blend(-54,47,S(t,6.65))*zoom,525+blend(60,-3,p)];click=S(t,6.6)-S(t,6.85);}
+ if(t>9.05&&t<10.8){const p=S(t,9.05);point=[960-135*zoom,525+blend(120,35,p)];click=S(t,9.4)-S(t,9.65);}
+ if(t>14.6&&t<15.6){const p=S(t,14.6);point=[blend(1180,960,p),blend(700,525,p)];click=S(t,15.4)-S(t,15.6);}
+ $('#pointer').style.opacity=point?'1':'0';$('#tap').style.opacity=String(clamp(click)*.55);
+ if(point){$('#pointer').style.transform=`translate(${point[0]}px,${point[1]}px) scale(${1-.15*click})`;$('#tap').style.transform=`translate(${point[0]-17}px,${point[1]-17}px) scale(${1+click*.6})`;}
+}
+const clock={t:0};const tl=gsap.timeline({paused:true});tl.to(clock,{t:24,duration:24,ease:'none',onUpdate:()=>renderAt(clock.t)},0);window.__timelines={main:tl};window.addEventListener('hf-seek',e=>renderAt(e.detail.time));renderAt(0);
+</script></body></html>
+
+

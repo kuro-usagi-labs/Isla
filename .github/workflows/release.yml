@@ -78,5 +78,6 @@ jobs:
           script: |
             const release_id = Number('${{ needs.prepare.outputs.release_id }}');
             const assets = (await github.rest.repos.listReleaseAssets({...context.repo, release_id})).data;
-            if (assets.length < 5) throw new Error('Expected Windows, two macOS architectures, Debian and AppImage assets');
+            const required = [/x64-setup\.exe$/, /aarch64\.dmg$/, /x64\.dmg$/, /\.deb$/, /\.AppImage$/];
+            if (!required.every(pattern=>assets.some(a=>pattern.test(a.name)))) throw new Error('Expected Windows, two macOS architectures, Debian and AppImage assets');
             await github.rest.repos.updateRelease({...context.repo, release_id, draft:false});

@@ -10,3 +10,11 @@ release/
 .env
 .env.*
 !.env.example
+media/renders/
+media/showcase/.hyperframes/
+media/showcase/renders/
+media/showcase/.thumbnails/
+media/showcase/assets/app.css
+media/showcase/assets/*.js
+media/showcase/assets/*.wav
+media/showcase/index.html

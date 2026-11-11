@@ -10,7 +10,11 @@
     "preview": "vite preview --host 127.0.0.1 --port 1426",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "showcase:build": "node scripts/build-showcase.mjs",
+    "showcase:preview": "hyperframes preview media/showcase",
+    "showcase:check": "hyperframes check media/showcase",
+    "showcase:render": "hyperframes render media/showcase -o media/renders/isla-showcase-1080p.mp4 --fps 30 --quality high --workers 2"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.9.0",

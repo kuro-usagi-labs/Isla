@@ -14,7 +14,10 @@
     "showcase:build": "node scripts/build-showcase.mjs",
     "showcase:preview": "hyperframes preview media/showcase",
     "showcase:check": "hyperframes check media/showcase",
-    "showcase:render": "hyperframes render media/showcase -o media/renders/isla-showcase-1080p.mp4 --fps 30 --quality high --workers 2"
+    "showcase:render": "node scripts/render-launch.mjs media/showcase/index.html media/renders/isla-launch-1080p60.mp4 60 2 4 2",
+    "showcase:draft": "node scripts/render-launch.mjs media/showcase/index.html media/renders/isla-launch-draft.mp4 30 1 4 1",
+    "showcase:package": "node scripts/package-showcase.mjs",
+    "showcase:render:hyperframes": "hyperframes render media/showcase -o media/renders/isla-showcase-hyperframes.mp4 --fps 60 --quality high --workers 2"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.9.0",

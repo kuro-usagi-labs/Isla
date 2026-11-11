@@ -50,7 +50,7 @@ The Windows build uses NSIS. macOS builds require Xcode tools; Linux needs WebKi
 
 ## The showcase
 
-The [editable video project](media/showcase/) uses the production React UI and geometry, [Motion](https://github.com/motiondivision/motion) spring generators, and [Hyperframes](https://github.com/heygen-com/hyperframes) to render a deterministic 1080p MP4. It animates the application itself: split, merge, expand, EQ, seek, volume and theme transitions. The soundtrack is synthesized locally, with no third-party song samples.
+The [editable launch film](media/showcase/) combines camera direction and rendering adapted from [Barty-Bart/motion-graphics](https://github.com/Barty-Bart/motion-graphics) with [Motion](https://github.com/motiondivision/motion) springs. The production React UI and geometry animate through split, merge, expand, EQ, seek, volume and theme changes. A damped camera follows the interactions through macro shots, pans and pull-backs. The finished film is 1080p at 60 fps with shutter sampling, an original score and CC0 interaction sounds. [Hyperframes](https://github.com/heygen-com/hyperframes) provides the editable timeline preview and checks.
 
 ```sh
 pnpm build
@@ -58,7 +58,9 @@ pnpm showcase:build
 pnpm showcase:preview
 # FFmpeg and ffprobe must be available on PATH:
 pnpm showcase:check
+pnpm showcase:draft
 pnpm showcase:render
+pnpm showcase:package
 ```
 
 Built with Tauri 2, Rust, React, TypeScript, Motion, Rodio/CPAL and SQLite. Local music stays local.

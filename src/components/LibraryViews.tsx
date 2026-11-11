@@ -92,6 +92,7 @@ export const LibraryViews: React.FC<LibraryViewsProps> = ({
   const [sortField, setSortField] = useState<SortField>('title');
   const [sortDir, setSortDir] = useState<SortDirection>('asc');
   const [visibleLimit, setVisibleLimit] = useState(80);
+  const upcoming = useMemo(() => getUpcomingQueue(player), [player.queue, player.currentQueueIndex, player.shuffle, player.repeatMode]);
 
   // Drill-down subviews
   const [selectedAlbumName, setSelectedAlbumName] = useState<string | null>(null);
@@ -293,7 +294,7 @@ export const LibraryViews: React.FC<LibraryViewsProps> = ({
       <div className="flex flex-col pb-2">
         {renderInlineCreatePlaylistBanner()}
         <div>
-          {getUpcomingQueue(player).map(({ track, index: idx }) => (
+          {upcoming.map(({ track, index: idx }) => (
             <TrackRow
               dense
               key={`${track.id}-${idx}`}
@@ -323,7 +324,7 @@ export const LibraryViews: React.FC<LibraryViewsProps> = ({
               }
             />
           ))}
-          {getUpcomingQueue(player).length === 0 && <div className="px-6 py-6 text-center text-[12px]" style={{ color: 'var(--isla-text-secondary)' }}>You’re all caught up. Add another song from your library.</div>}
+          {upcoming.length === 0 && <div className="px-6 py-6 text-center text-[12px]" style={{ color: 'var(--isla-text-secondary)' }}>You’re all caught up. Add another song from your library.</div>}
         </div>
         {player.queue.length > 1 && (
           <div

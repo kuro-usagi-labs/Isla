@@ -2,6 +2,8 @@
 
 mod audio;
 mod audio_devices;
+mod decoder;
+mod read_ahead;
 mod beat;
 mod equalizer;
 mod db;

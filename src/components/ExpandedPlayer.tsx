@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useIsPresent, useMotionValue, useMotionValueEvent, useTransform, type MotionValue } from 'motion/react';
 import {playerGather} from '../utils/player-gather';
 import { ChevronDown, ChevronUp, Heart, ListMusic, Music, Disc, Mic2, Sparkles, Settings as SettingsIcon, Shuffle, Repeat, Repeat1, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, X, ArrowRightLeft, SlidersHorizontal } from 'lucide-react';
@@ -122,7 +122,7 @@ export const ExpandedPlayer: React.FC<ExpandedPlayerProps> = (props) => {
   const position = scrubValue ?? player.positionSecs;
   const progress = duration > 0 ? Math.min(100, Math.max(0, position / duration * 100)) : 0;
   const volume = player.isMuted ? 0 : Math.round(player.volume * 100);
-  const upcoming = getUpcomingQueue(player);
+  const upcoming = useMemo(() => getUpcomingQueue(player), [player.queue, player.currentQueueIndex, player.shuffle, player.repeatMode]);
   const spring = reduced ? { duration: 0.1 } : contentSpring;
   const status = player.lastError || props.statusBanner || (props.scanProgress && !props.scanProgress.done ? 'Indexing your music… ' + props.scanProgress.scannedFiles + '/' + props.scanProgress.totalFiles : null);
 

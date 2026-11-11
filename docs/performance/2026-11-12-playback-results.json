@@ -1,0 +1,343 @@
+{
+  "date": "2026-11-12",
+  "platform": "Windows x64",
+  "configuration": "release opt-level=s",
+  "baselineMp3": [
+    {
+      "blocks": 517,
+      "budgetMs": 5.804988662131519,
+      "channels": 2,
+      "maxMs": 0.2551,
+      "overBudget": 0,
+      "p50Ms": 0.0332,
+      "p99Ms": 0.1922,
+      "peak": 1.0646569728851318,
+      "sampleRate": 44100,
+      "scenario": "bypass+beat"
+    },
+    {
+      "blocks": 517,
+      "budgetMs": 5.804988662131519,
+      "channels": 2,
+      "maxMs": 0.7707999999999999,
+      "overBudget": 0,
+      "p50Ms": 0.0333,
+      "p99Ms": 0.11510000000000001,
+      "peak": 0.5818877816200256,
+      "sampleRate": 44100,
+      "scenario": "eq+beat"
+    },
+    {
+      "blocks": 517,
+      "budgetMs": 5.804988662131519,
+      "channels": 2,
+      "maxMs": 7.7996,
+      "overBudget": 2,
+      "p50Ms": 0.0526,
+      "p99Ms": 0.1582,
+      "peak": 0.6433568000793457,
+      "sampleRate": 44100,
+      "scenario": "live-eq+beat"
+    },
+    {
+      "blocks": 517,
+      "budgetMs": 5.804988662131519,
+      "channels": 2,
+      "maxMs": 0.29710000000000003,
+      "overBudget": 0,
+      "p50Ms": 0.10569999999999999,
+      "p99Ms": 0.2496,
+      "peak": 0.6433568000793457,
+      "sampleRate": 44100,
+      "scenario": "crossfade+live-eq+beat"
+    }
+  ],
+  "finalSources": {
+    "mp3": [
+      {
+        "blocks": 517,
+        "budgetMs": 5.804988662131519,
+        "channels": 2,
+        "maxMs": 0.1257,
+        "overBudget": 0,
+        "p50Ms": 0.011600000000000001,
+        "p99Ms": 0.0701,
+        "peak": 1.0646569728851318,
+        "sampleRate": 44100,
+        "scenario": "bypass+beat",
+        "starvationFrames": 0
+      },
+      {
+        "blocks": 517,
+        "budgetMs": 5.804988662131519,
+        "channels": 2,
+        "maxMs": 0.19340000000000002,
+        "overBudget": 0,
+        "p50Ms": 0.0247,
+        "p99Ms": 0.1389,
+        "peak": 0.5818877816200256,
+        "sampleRate": 44100,
+        "scenario": "eq+beat",
+        "starvationFrames": 0
+      },
+      {
+        "blocks": 517,
+        "budgetMs": 5.804988662131519,
+        "channels": 2,
+        "maxMs": 0.208,
+        "overBudget": 0,
+        "p50Ms": 0.0265,
+        "p99Ms": 0.1792,
+        "peak": 0.6433568000793457,
+        "sampleRate": 44100,
+        "scenario": "live-eq+beat",
+        "starvationFrames": 0
+      },
+      {
+        "blocks": 517,
+        "budgetMs": 5.804988662131519,
+        "channels": 2,
+        "maxMs": 0.294,
+        "overBudget": 0,
+        "p50Ms": 0.0641,
+        "p99Ms": 0.2474,
+        "peak": 0.6433568000793457,
+        "sampleRate": 44100,
+        "scenario": "crossfade+live-eq+beat",
+        "starvationFrames": 0
+      }
+    ],
+    "wav96k": [
+      {
+        "blocks": 1125,
+        "budgetMs": 2.6666666666666665,
+        "channels": 2,
+        "maxMs": 0.1439,
+        "overBudget": 0,
+        "p50Ms": 0.0327,
+        "p99Ms": 0.1205,
+        "peak": 1.069852352142334,
+        "sampleRate": 96000,
+        "scenario": "bypass+beat",
+        "starvationFrames": 0
+      },
+      {
+        "blocks": 1125,
+        "budgetMs": 2.6666666666666665,
+        "channels": 2,
+        "maxMs": 0.2217,
+        "overBudget": 0,
+        "p50Ms": 0.0427,
+        "p99Ms": 0.1505,
+        "peak": 0.5897352695465088,
+        "sampleRate": 96000,
+        "scenario": "eq+beat",
+        "starvationFrames": 0
+      },
+      {
+        "blocks": 1125,
+        "budgetMs": 2.6666666666666665,
+        "channels": 2,
+        "maxMs": 0.2682,
+        "overBudget": 0,
+        "p50Ms": 0.047,
+        "p99Ms": 0.20379999999999998,
+        "peak": 0.6474778652191162,
+        "sampleRate": 96000,
+        "scenario": "live-eq+beat",
+        "starvationFrames": 0
+      },
+      {
+        "blocks": 1125,
+        "budgetMs": 2.6666666666666665,
+        "channels": 2,
+        "maxMs": 3.7382,
+        "overBudget": 4,
+        "p50Ms": 0.0891,
+        "p99Ms": 0.8224,
+        "peak": 0.6474778652191162,
+        "sampleRate": 96000,
+        "scenario": "crossfade+live-eq+beat",
+        "starvationFrames": 0
+      }
+    ],
+    "flac48k": [
+      {
+        "blocks": 563,
+        "budgetMs": 5.333333333333333,
+        "channels": 2,
+        "maxMs": 0.2351,
+        "overBudget": 0,
+        "p50Ms": 0.019700000000000002,
+        "p99Ms": 0.0594,
+        "peak": 1,
+        "sampleRate": 48000,
+        "scenario": "bypass+beat",
+        "starvationFrames": 0
+      },
+      {
+        "blocks": 563,
+        "budgetMs": 5.333333333333333,
+        "channels": 2,
+        "maxMs": 2.0059,
+        "overBudget": 0,
+        "p50Ms": 0.0354,
+        "p99Ms": 0.26380000000000003,
+        "peak": 0.583641767501831,
+        "sampleRate": 48000,
+        "scenario": "eq+beat",
+        "starvationFrames": 0
+      },
+      {
+        "blocks": 563,
+        "budgetMs": 5.333333333333333,
+        "channels": 2,
+        "maxMs": 0.7948999999999999,
+        "overBudget": 0,
+        "p50Ms": 0.0399,
+        "p99Ms": 0.2316,
+        "peak": 0.6394793391227722,
+        "sampleRate": 48000,
+        "scenario": "live-eq+beat",
+        "starvationFrames": 0
+      },
+      {
+        "blocks": 563,
+        "budgetMs": 5.333333333333333,
+        "channels": 2,
+        "maxMs": 1.3932,
+        "overBudget": 0,
+        "p50Ms": 0.0798,
+        "p99Ms": 0.4518,
+        "peak": 0.6394793391227722,
+        "sampleRate": 48000,
+        "scenario": "crossfade+live-eq+beat",
+        "starvationFrames": 0
+      }
+    ],
+    "m4a48k": [
+      {
+        "blocks": 563,
+        "budgetMs": 5.333333333333333,
+        "channels": 2,
+        "maxMs": 0.7295,
+        "overBudget": 0,
+        "p50Ms": 0.0214,
+        "p99Ms": 0.0491,
+        "peak": 1.0421913862228394,
+        "sampleRate": 48000,
+        "scenario": "bypass+beat",
+        "starvationFrames": 0
+      },
+      {
+        "blocks": 563,
+        "budgetMs": 5.333333333333333,
+        "channels": 2,
+        "maxMs": 1.1661,
+        "overBudget": 0,
+        "p50Ms": 0.0384,
+        "p99Ms": 0.1467,
+        "peak": 0.5725438594818115,
+        "sampleRate": 48000,
+        "scenario": "eq+beat",
+        "starvationFrames": 0
+      },
+      {
+        "blocks": 563,
+        "budgetMs": 5.333333333333333,
+        "channels": 2,
+        "maxMs": 3.9876,
+        "overBudget": 0,
+        "p50Ms": 0.0428,
+        "p99Ms": 0.6506,
+        "peak": 0.5761961340904236,
+        "sampleRate": 48000,
+        "scenario": "live-eq+beat",
+        "starvationFrames": 0
+      },
+      {
+        "blocks": 563,
+        "budgetMs": 5.333333333333333,
+        "channels": 2,
+        "maxMs": 29.0146,
+        "overBudget": 2,
+        "p50Ms": 0.0837,
+        "p99Ms": 0.8785000000000001,
+        "peak": 0.5761961340904236,
+        "sampleRate": 48000,
+        "scenario": "crossfade+live-eq+beat",
+        "starvationFrames": 0
+      }
+    ]
+  },
+  "rodioDevice": {
+    "mp3": [
+      {
+        "cpuWorkers": 2,
+        "scenario": "real-device-two-decks-eq20hz-tempo-bass-beat-cpu-load",
+        "seconds": 12,
+        "starvationEvents": 0,
+        "starvationFrames": 0
+      }
+    ],
+    "wav96k": [
+      {
+        "cpuWorkers": 2,
+        "scenario": "real-device-two-decks-eq20hz-tempo-bass-beat-cpu-load",
+        "seconds": 12,
+        "starvationEvents": 0,
+        "starvationFrames": 0
+      }
+    ],
+    "flac48k": [
+      {
+        "cpuWorkers": 2,
+        "scenario": "real-device-two-decks-eq20hz-tempo-bass-beat-cpu-load",
+        "seconds": 12,
+        "starvationEvents": 0,
+        "starvationFrames": 0
+      }
+    ],
+    "m4a48k": [
+      {
+        "cpuWorkers": 2,
+        "scenario": "real-device-two-decks-eq20hz-tempo-bass-beat-cpu-load",
+        "seconds": 12,
+        "starvationEvents": 0,
+        "starvationFrames": 0
+      }
+    ]
+  },
+  "timedCpal": {
+    "wav96k12s": [
+      {
+        "callbacks": 1010,
+        "channels": 2,
+        "maxMs": 0.9267,
+        "minBudgetMs": 10,
+        "overBudget": 0,
+        "p99UpperMs": 0.55,
+        "sampleRate": 48000,
+        "scenario": "timed-cpal-callback-two-production-decks-eq20hz-cpu2",
+        "seconds": 12,
+        "starvationFrames": 0,
+        "streamErrors": 0
+      }
+    ],
+    "mp3_60s": [
+      {
+        "callbacks": 6078,
+        "channels": 2,
+        "maxMs": 0.6118,
+        "minBudgetMs": 10,
+        "overBudget": 0,
+        "p99UpperMs": 0.25,
+        "sampleRate": 48000,
+        "scenario": "timed-cpal-callback-two-production-decks-eq20hz-cpu2",
+        "seconds": 60,
+        "starvationFrames": 0,
+        "streamErrors": 0
+      }
+    ]
+  }
+}

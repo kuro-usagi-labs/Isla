@@ -137,12 +137,18 @@ export const App: React.FC = () => {
       boundsFrame.current = null;
       const shell = shellRef.current;
       if (!shell) return;
-      const geometry = measureIslandHitGeometry(shell);
+      const geometry = measureIslandHitGeometry(shell,Array.from(document.querySelectorAll<HTMLElement>('[data-island-menu-region]')));
       if (!geometry) return;
       void islaBridge.setIslandBounds(geometry.bounds,geometry.regions,geometry.expanded).catch(() => {});
       lastBoundsAt.current = performance.now();
     });
   }, []);
+  useEffect(() => {
+    // Renew the input lease after final styles/exit presence have settled, even
+    // when no further animation or playback frame arrives.
+    const timer=window.setInterval(publishBounds,200);
+    return()=>window.clearInterval(timer);
+  },[publishBounds]);
   const [player, setPlayer] = useState<PlayerSnapshot>(INITIAL_PLAYER);
   const publishSettledBounds = useCallback(() => {
     if (settledBoundsFrame.current !== null) cancelAnimationFrame(settledBoundsFrame.current);
@@ -836,6 +842,7 @@ export const App: React.FC = () => {
       <motion.div
         ref={shellRef}
         data-island-expanded={expanded}
+        data-island-surface={!orbLayout}
         data-compact-phase={settings.pillSize==='compact'?compactFlow.phase:undefined}
         onFocusCapture={() => { focusWasInside.current = true; }}
         onKeyDownCapture={() => { focusWasInside.current = true; }}

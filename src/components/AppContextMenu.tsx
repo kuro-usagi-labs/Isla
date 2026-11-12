@@ -1,5 +1,5 @@
 import React from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, motion, useIsPresent } from 'motion/react';
 import {
   ArrowRightLeft,
   Check,
@@ -23,6 +23,11 @@ import {
 } from 'lucide-react';
 import type { AppSettings, PlayerSnapshot } from '../types/isla';
 import { hexToRgba } from '../utils/format';
+
+function MenuSurface(props: React.ComponentProps<typeof motion.div>) {
+  const present=useIsPresent();
+  return <motion.div {...props} data-island-menu-region inert={!present} aria-hidden={!present}/>;
+}
 
 interface AppContextMenuProps {
   open: boolean;
@@ -96,7 +101,8 @@ export const AppContextMenu: React.FC<AppContextMenuProps> = ({
     <AnimatePresence>
       {open && (
         <>
-          {/* Full-canvas transparent backdrop to catch outside clicks cleanly */}
+          {/* This DOM backdrop closes clicks within Isla; native input outside
+              visible surfaces passes directly to the application underneath. */}
           <div
             className="fixed inset-0 z-40"
             onMouseDown={(e) => {
@@ -110,7 +116,7 @@ export const AppContextMenu: React.FC<AppContextMenuProps> = ({
             }}
           />
 
-          <motion.div
+          <MenuSurface
             initial={
               settings.reducedMotion
                 ? { opacity: 0 }
@@ -389,7 +395,7 @@ export const AppContextMenu: React.FC<AppContextMenuProps> = ({
               <Power size={13.5} />
               <span>Quit Isla</span>
             </button>
-          </motion.div>
+          </MenuSurface>
         </>
       )}
     </AnimatePresence>

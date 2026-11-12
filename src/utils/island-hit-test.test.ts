@@ -9,6 +9,7 @@ function region(x: number, y: number, width: number, options: {inert?:boolean;op
 function shell(nodes: ReturnType<typeof region>[]) {
   vi.stubGlobal('getComputedStyle',(node: ReturnType<typeof region>)=>node.styleForTest);
   return {getBoundingClientRect:()=>({x:48,y:48,width:412,height:268}),offsetWidth:412,
+    closest:()=>null,parentElement:null,
     dataset:{islandExpanded:'false'},querySelectorAll:()=>nodes,
     styleForTest:{borderTopLeftRadius:'28px'} } as unknown as HTMLElement;
 }
@@ -30,5 +31,23 @@ describe('visible island hit regions',()=>{
     expect(geometry.regions[0]).toEqual({x:95,y:195,width:85,height:85,radius:42.5});
     expect(containsIslandPoint(geometry.regions[0],137.5,237.5)).toBe(true);
     expect(containsIslandPoint(geometry.regions[0],95,195)).toBe(false);
+  });
+  it('does not fall back to the oversized layout shell when every region is inactive',()=>{
+    const node=shell([region(48,48,60,{inert:true})]);
+    expect(measureIslandHitGeometry(node)?.regions).toEqual([]);
+    expect(islandOwnsPointer(node,300,240)).toBe(false);
+  });
+  it('captures a shell rectangle only when it explicitly paints a visible surface',()=>{
+    const node=shell([]);
+    expect(islandOwnsPointer(node,300,240)).toBe(false);
+    node.dataset.islandSurface='true';
+    expect(islandOwnsPointer(node,300,240)).toBe(true);
+  });
+  it('adds only the menu rectangle, leaving its transparent backdrop unclaimed',()=>{
+    const node=shell([region(48,48,60)]);
+    const menu=region(200,48,120);
+    const geometry=measureIslandHitGeometry(node,[menu as unknown as HTMLElement])!;
+    expect(geometry.regions.some(r=>containsIslandPoint(r,250,100))).toBe(true);
+    expect(geometry.regions.some(r=>containsIslandPoint(r,150,180))).toBe(false);
   });
 });

@@ -1,7 +1,7 @@
 {
   "name": "isla-music-player",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.5",
   "description": "Isla — a fluid, floating offline music player",
   "type": "module",
   "scripts": {
@@ -10,6 +10,8 @@
     "preview": "vite preview --host 127.0.0.1 --port 1426",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:input-routing": "node scripts/test-input-routing.mjs",
+    "test:input-native": "node scripts/test-native-input.mjs",
     "tauri": "tauri",
     "showcase:build": "node scripts/build-showcase.mjs",
     "showcase:preview": "hyperframes preview media/showcase",

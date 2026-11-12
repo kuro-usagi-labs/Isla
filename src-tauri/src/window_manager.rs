@@ -1,9 +1,11 @@
 use crate::db::Database;
 use crate::models::WindowGeometryResult;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, TryLockError};
 use std::time::{Duration,Instant};
 use tauri::{AppHandle, Emitter, LogicalSize, PhysicalPosition, PhysicalSize, WebviewWindow};
 use serde::Deserialize;
+#[cfg(target_os="windows")]
+mod windows_input;
 
 #[derive(Debug, Clone, Copy, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -21,14 +23,20 @@ impl IslandBounds {
     }
 
     pub fn contains(&self, x: f64, y: f64) -> bool {
+        if !x.is_finite()||!y.is_finite(){return false;}
         if x < self.x || x > self.x + self.width || y < self.y || y > self.y + self.height { return false; }
-        let r = self.radius.min(self.width / 2.0).min(self.height / 2.0);
-        let nearest_x = x.clamp(self.x + r, self.x + self.width - r);
-        let nearest_y = y.clamp(self.y + r, self.y + self.height - r);
-        (x - nearest_x).powi(2) + (y - nearest_y).powi(2) <= r * r
+        let half_w=self.width/2.0;
+        let half_h=self.height/2.0;
+        let r=self.radius.min(half_w).min(half_h);
+        // Do not clamp between independently rounded absolute endpoints. For a
+        // pulsed circle, x+r can exceed x+width-r by one ULP and f64::clamp panics.
+        let dx=((x-(self.x+half_w)).abs()-(half_w-r)).max(0.0);
+        let dy=((y-(self.y+half_h)).abs()-(half_h-r)).max(0.0);
+        dx*dx+dy*dy<=r*r
     }
 }
 
+#[cfg(any(not(target_os="windows"),test))]
 pub fn island_contains(bounds: &IslandBounds, regions: &[IslandBounds], x:f64, y:f64) -> bool {
     if regions.is_empty() { bounds.contains(x,y) } else { regions.iter().any(|region|region.contains(x,y)) }
 }
@@ -39,8 +47,10 @@ fn ignore_cursor_for_pointer(inside: bool, owns_press: bool, button_down: bool) 
     !inside && !(owns_press && button_down)
 }
 
+#[cfg(any(not(target_os="windows"),test))]
 #[derive(Default)]
 struct CursorIgnoreSync { applied: Option<(bool,u64)> }
+#[cfg(any(not(target_os="windows"),test))]
 impl CursorIgnoreSync {
     fn apply<E>(&mut self,ignore:bool,revision:u64,set:impl FnOnce(bool)->Result<(),E>) {
         if self.applied!=Some((ignore,revision)) && set(ignore).is_ok() {
@@ -71,6 +81,7 @@ pub struct DragSession {
 pub struct WindowStateMemory {
     pub island_bounds: Option<IslandBounds>,
     pub island_regions: Vec<IslandBounds>,
+    pub hit_geometry_at: Option<Instant>,
     pub expanded: bool,
     pub pill_size: String,
     /// Physical screen coordinate of the pill frame's top-left (including shadow gutter)
@@ -99,6 +110,7 @@ impl WindowController {
             state: Mutex::new(WindowStateMemory {
                 island_bounds: None,
                 island_regions: Vec::new(),
+                hit_geometry_at: None,
                 expanded: start_expanded,
                 pill_size,
                 pill_phys_x: 96,
@@ -132,6 +144,26 @@ impl WindowController {
         // Tauri monitor getters synchronously wait for the UI thread. Never retain this guard.
         dragging.then(query)
     }
+
+    fn cursor_passthrough(&self, point: Option<(f64,f64)>, button_down: bool, now: Instant) -> bool {
+        // Input must never wait for a renderer, drag, monitor or settings command.
+        let mut state=match self.state.try_lock() {
+            Ok(state)=>state,
+            Err(TryLockError::WouldBlock)=>return true,
+            Err(TryLockError::Poisoned(error))=>{
+                let mut state=error.into_inner();
+                let expanded=state.expanded;let size=state.pill_size.clone();
+                state.set_mode(expanded,&size);
+                self.state.clear_poison();
+                state
+            }
+        };
+        if !button_down {state.owns_pointer_press=false;}
+        let inside=point.is_some_and(|(x,y)|state.contains_live_input(x,y,now));
+        let ignore=ignore_cursor_for_pointer(inside,state.owns_pointer_press,button_down);
+        state.ignoring_cursor=ignore;
+        ignore
+    }
 }
 
 impl WindowStateMemory {
@@ -140,8 +172,10 @@ impl WindowStateMemory {
         self.pill_size=pill_size.into();
         self.island_bounds=None;
         self.island_regions.clear();
+        self.hit_geometry_at=None;
         self.owns_pointer_press=false;
         self.context_menu_open=false;
+        self.drag_session=None;
         self.hit_test_revision=self.hit_test_revision.wrapping_add(1);
     }
 
@@ -149,18 +183,34 @@ impl WindowStateMemory {
         if self.expanded!=expanded {return false;}
         self.island_bounds=Some(bounds);
         self.island_regions=regions;
+        self.hit_geometry_at=Some(Instant::now());
         true
     }
 
+    #[cfg(any(not(target_os="windows"),test))]
     fn hit_bounds(&self)->IslandBounds {
+        self.island_bounds.unwrap_or_else(||self.fallback_bounds())
+    }
+
+    fn contains_live_input(&self,x:f64,y:f64,now:Instant)->bool {
+        if self.hit_geometry_at.is_some_and(|at|now.saturating_duration_since(at)<=Duration::from_millis(750)) {
+            // An explicit empty packet means no active surface, never the old shell.
+            return self.island_regions.iter().any(|region|region.contains(x,y));
+        }
+        // A frozen renderer cannot retain its expanded transparent footprint.
+        // The resting pill remains recoverable while a stalled panel fails open.
+        !self.expanded && self.fallback_bounds().contains(x,y)
+    }
+
+    fn fallback_bounds(&self)->IslandBounds {
         let (w,h)=get_pill_card_dimensions(&self.pill_size);
-        self.island_bounds.unwrap_or(IslandBounds {
+        IslandBounds {
             x:SHADOW_GUTTER as f64+if self.expanded{0.0}else{self.anchor_offset_x as f64},
             y:SHADOW_GUTTER as f64+if self.expanded{0.0}else{self.anchor_offset_y as f64},
             width:if self.expanded{412.0}else{w as f64},
             height:if self.expanded{268.0}else{h as f64},
             radius:if self.expanded{28.0}else{h as f64/2.0},
-        })
+        }
     }
 }
 
@@ -406,6 +456,8 @@ fn set_window_rect_atomic(window: &WebviewWindow, x: i32, y: i32, width: i32, he
 
 #[cfg(target_os = "windows")]
 fn get_cursor_pos_win32() -> Option<(i32, i32)> {
+    #[cfg(feature="input-audit")]
+    if let Some((point,_))=crate::input_audit::pointer() {return Some(point);}
     #[repr(C)]
     struct POINT {
         x: i32,
@@ -431,6 +483,8 @@ fn get_cursor_pos_win32() -> Option<(i32, i32)> {
 
 #[cfg(target_os = "windows")]
 fn is_left_mouse_button_down() -> bool {
+    #[cfg(feature="input-audit")]
+    if let Some((_,down))=crate::input_audit::pointer() {return down;}
     #[link(name = "user32")]
     extern "system" {
         fn GetAsyncKeyState(vKey: i32) -> i16;
@@ -528,13 +582,39 @@ pub fn spawn_window_interaction_loop(
     controller: Arc<WindowController>,
     db: Arc<Database>,
 ) {
+    // Resolve the handle on the UI thread, before starting either worker.
+    // Windows click-through has no Tauri calls, DB access or blocking state locks.
+    #[cfg(target_os="windows")]
+    let native_hwnd=window.hwnd().ok().map(|h|h.0 as isize);
+    #[cfg(target_os="windows")]
+    if let Some(hwnd)=native_hwnd {
+        let input_controller=Arc::clone(&controller);
+        std::thread::Builder::new().name("isla-input-passthrough".into()).spawn(move|| {
+            while windows_input::window_exists(hwnd) {
+                let point=windows_input::client_metrics(hwnd).and_then(|((x,y),scale)|
+                    get_cursor_pos_win32().map(|(cx,cy)|((cx-x) as f64/scale,(cy-y) as f64/scale)));
+                let ignore=std::panic::catch_unwind(||input_controller.cursor_passthrough(point,is_left_mouse_button_down(),Instant::now())).unwrap_or(true);
+                let _=windows_input::sync_passthrough(hwnd,ignore);
+                std::thread::sleep(Duration::from_millis(8));
+            }
+        }).expect("Cannot start Windows input worker");
+    } else {
+        // Never leave an unusable input canvas in front of the desktop.
+        let _=window.set_ignore_cursor_events(true);
+    }
     std::thread::spawn(move || {
         // OS/window requests happen outside the state mutex. Bounds IPC can acquire it at any time.
         let mut monitors = collect_monitor_rects(&window);
         let mut last_monitor_refresh = Instant::now();
         let mut was_dragging = false;
+        #[cfg(not(target_os="windows"))]
         let mut cursor_ignore = CursorIgnoreSync::default();
         loop {
+            #[cfg(target_os="windows")]
+            let live_metrics=native_hwnd.and_then(windows_input::client_metrics);
+            #[cfg(target_os="windows")]
+            let scale=live_metrics.map(|(_,scale)|scale).unwrap_or(1.0);
+            #[cfg(not(target_os="windows"))]
             let scale = window.scale_factor().unwrap_or(1.0);
             let cursor = get_cursor_pos_win32();
             let lbutton_down = is_left_mouse_button_down();
@@ -551,6 +631,7 @@ pub fn spawn_window_interaction_loop(
             let mut move_win_to: Option<(i32, i32, i32, i32)> = None;
             let mut emit_geom: Option<WindowGeometryResult> = None;
             let mut save_pill_pos: Option<(i32, i32)> = None;
+            #[cfg(not(target_os="windows"))]
             let mut toggle_ignore_cursor: Option<(bool,u64)> = None;
 
             if let Ok(mut state) = controller.state.lock() {
@@ -686,6 +767,8 @@ pub fn spawn_window_interaction_loop(
                         }
                     }
                 } else {
+                    #[cfg(not(target_os="windows"))]
+                    {
                     // Not dragging: manage dynamic click-through when in Compact Pill mode
                     if state.context_menu_open {
                         if state.ignoring_cursor {
@@ -693,21 +776,25 @@ pub fn spawn_window_interaction_loop(
                         }
                     } else if let Some((cx, cy)) = cursor {
                         let bounds = state.hit_bounds();
-                        let local_x = (cx - state.win_phys_x) as f64 / scale;
-                        let local_y = (cy - state.win_phys_y) as f64 / scale;
+                        let (origin_x,origin_y)=(state.win_phys_x,state.win_phys_y);
+                        let local_x = (cx - origin_x) as f64 / scale;
+                        let local_y = (cy - origin_y) as f64 / scale;
                         let should_ignore = ignore_cursor_for_pointer(island_contains(&bounds,&state.island_regions,local_x,local_y),state.owns_pointer_press,lbutton_down);
                         if should_ignore != state.ignoring_cursor {
                             state.ignoring_cursor = should_ignore;
                         }
                     }
+                    }
                 }
+                #[cfg(not(target_os="windows"))]
+                {
                 toggle_ignore_cursor=Some((state.ignoring_cursor,state.hit_test_revision));
+                }
             }
 
             // Perform Win32 / Tauri calls outside the mutex lock
+            #[cfg(not(target_os="windows"))]
             if let Some((ignore,revision)) = toggle_ignore_cursor {
-                // This loop is the only writer of the native flag. A failed OS
-                // update is retried; it is never recorded as successfully applied.
                 cursor_ignore.apply(ignore,revision,|ignore|window.set_ignore_cursor_events(ignore));
             }
             if let Some((wx, wy, ww, wh)) = move_win_to {
@@ -822,6 +909,92 @@ pub fn set_windows_startup(_enabled: bool) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fractional_pulsed_circle_does_not_panic_or_poison_input_state() {
+        let bounds=IslandBounds{x:396.0000173,y:372.0000173,width:70.5244129544237,height:70.5244129544237,radius:35.26220647721185};
+        assert!(bounds.valid());
+        assert!(bounds.contains(bounds.x+bounds.width/2.0,bounds.y+bounds.height/2.0));
+        assert!(!bounds.contains(bounds.x,bounds.y));
+        assert!(!bounds.contains(f64::NAN,bounds.y));
+    }
+
+    #[test]
+    fn fractional_circle_positions_remain_safe_through_a_full_pulse_envelope() {
+        for frame in 0..10000 {
+            let scale=1.0+0.06*(frame as f64*0.017).sin().abs();
+            let w=68.0*scale;let h=68.0*scale;
+            let b=IslandBounds{x:396.0+frame as f64*0.0000173,y:372.0+frame as f64*0.0000137,width:w,height:h,radius:w/2.0};
+            assert!(b.contains(b.x+w/2.0,b.y+h/2.0));
+            assert!(!b.contains(b.x,b.y));
+        }
+    }
+
+    #[test]
+    fn a_poisoned_input_mutex_recovers_without_leaving_drag_or_capture_stuck() {
+        let controller=Arc::new(WindowController::new(false,"compact".into()));
+        let other=Arc::clone(&controller);
+        assert!(std::thread::spawn(move||{
+            let mut state=other.state.lock().unwrap();
+            state.owns_pointer_press=true;state.context_menu_open=true;
+            panic!("simulate the old hit-test panic while holding window state");
+        }).join().is_err());
+        assert!(controller.state.is_poisoned());
+        assert!(controller.cursor_passthrough(Some((350.0,260.0)),false,Instant::now()));
+        assert!(!controller.state.is_poisoned());
+        let mut state=controller.state.lock().unwrap();
+        assert!(!state.owns_pointer_press&&!state.context_menu_open&&state.drag_session.is_none());
+        let orb=state.fallback_bounds();
+        assert!(state.update_hit_geometry(orb,vec![orb],false));
+    }
+
+    #[test]
+    fn input_worker_fails_open_without_waiting_for_a_busy_window_command() {
+        let controller=WindowController::new(false,"compact".into());
+        let _busy_command=controller.state.lock().unwrap();
+        assert!(controller.cursor_passthrough(Some((78.0,78.0)),false,Instant::now()));
+    }
+
+    #[test]
+    fn stale_menu_and_drag_flags_cannot_capture_transparent_canvas_after_release() {
+        let controller=WindowController::new(false,"compact".into());
+        {
+            let mut state=controller.state.lock().unwrap();
+            let orb=state.fallback_bounds();
+            state.update_hit_geometry(orb,vec![orb],false);
+            state.context_menu_open=true;
+            state.owns_pointer_press=true;
+            state.drag_session=Some(DragSession{start_cursor_x:0,start_cursor_y:0,start_pill_x:0,start_pill_y:0,start_win_x:0,start_win_y:0,dragging_expanded:true});
+        }
+        assert!(controller.cursor_passthrough(Some((350.0,260.0)),false,Instant::now()));
+        assert!(!controller.state.lock().unwrap().owns_pointer_press);
+    }
+
+    #[test]
+    fn empty_regions_never_turn_an_invisible_shell_into_an_input_surface() {
+        let controller=WindowController::new(false,"compact".into());
+        let panel=IslandBounds{x:48.0,y:48.0,width:412.0,height:388.0,radius:28.0};
+        controller.state.lock().unwrap().update_hit_geometry(panel,vec![],false);
+        assert!(controller.cursor_passthrough(Some((350.0,260.0)),false,Instant::now()));
+        assert!(controller.cursor_passthrough(Some((166.0,78.0)),false,Instant::now()));
+    }
+
+    #[test]
+    fn expired_geometry_cannot_retain_the_former_player_footprint() {
+        let controller=WindowController::new(false,"compact".into());
+        let now=Instant::now();
+        let center={
+            let mut state=controller.state.lock().unwrap();
+            let panel=IslandBounds{x:48.0,y:48.0,width:412.0,height:388.0,radius:28.0};
+            state.update_hit_geometry(panel,vec![panel],false);
+            state.hit_geometry_at=Some(now-Duration::from_secs(1));
+            let orb=state.fallback_bounds();(orb.x+orb.width/2.0,orb.y+orb.height/2.0)
+        };
+        assert!(controller.cursor_passthrough(Some((350.0,260.0)),false,now));
+        assert!(!controller.cursor_passthrough(Some(center),false,now));
+        controller.state.lock().unwrap().expanded=true;
+        assert!(controller.cursor_passthrough(Some(center),false,now));
+    }
 
     #[test]
     fn an_active_press_keeps_its_release_during_a_pulse() {

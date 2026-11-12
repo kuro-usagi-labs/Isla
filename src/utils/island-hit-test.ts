@@ -8,14 +8,26 @@ export function containsIslandPoint(bounds: IslandBounds, x: number, y: number):
   return dx * dx + dy * dy <= r * r;
 }
 
-export function measureIslandHitGeometry(shell: HTMLElement) {
+function isActiveSurface(node: HTMLElement): boolean {
+  if (node.closest('[inert], [aria-hidden="true"]')) return false;
+  for (let current: HTMLElement | null = node; current; current = current.parentElement) {
+    const style = getComputedStyle(current);
+    if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) === 0) return false;
+  }
+  return true;
+}
+
+export function measureIslandHitGeometry(shell: HTMLElement, menus: HTMLElement[] = []) {
   const rect = shell.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) return null;
   const bounds: IslandBounds = { x: rect.x, y: rect.y, width: rect.width, height: rect.height,
     radius: (parseFloat(getComputedStyle(shell).borderTopLeftRadius) || 26) * rect.width / Math.max(1, shell.offsetWidth) };
   const regions: IslandBounds[] = [];
-  for (const node of Array.from(shell.querySelectorAll<HTMLElement>('[data-island-hit-region]'))) {
-    if (node.closest('[inert]')) continue;
+  // Only a rendered shell surface can claim its rectangle. In artwork mode the
+  // shell is a layout container; its empty footprint must never become input.
+  if (shell.dataset.islandSurface === 'true' && isActiveSurface(shell)) regions.push(bounds);
+  for (const node of [...shell.querySelectorAll<HTMLElement>('[data-island-hit-region]'), ...menus]) {
+    if (!isActiveSurface(node)) continue;
     const style = getComputedStyle(node);
     const r = node.getBoundingClientRect();
     // A just-mounted or disappearing region can have zero width. Do not send an
@@ -31,5 +43,5 @@ export function measureIslandHitGeometry(shell: HTMLElement) {
 
 export function islandOwnsPointer(shell: HTMLElement, x: number, y: number): boolean {
   const geometry = measureIslandHitGeometry(shell);
-  return Boolean(geometry && (geometry.regions.length ? geometry.regions : [geometry.bounds]).some(r => containsIslandPoint(r, x, y)));
+  return Boolean(geometry && geometry.regions.some(r => containsIslandPoint(r, x, y)));
 }

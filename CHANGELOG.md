@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.0.5] — 2026-11-12
+
+### Fixes
+
+- Fix transparent canvas areas blocking desktop clicks after the expanded player collapses to artwork.
+- Fix artwork becoming impossible to drag after collapse while pulse or morph motion is active.
+- Replace a floating-point clamp in circular/rounded native hit testing. Fractional coordinates could invert its bounds by one ULP, panic the input worker and poison shared window state.
+- Recover poisoned transient input state and release stale pointer/drag ownership instead of leaving an invisible canvas capturing clicks.
+- Run Windows input passthrough independently of monitor queries, drag updates, database writes and webview events; use the actual client origin and DPI.
+- Treat empty input regions as empty, expire stale expanded geometry and capture only visible menu surfaces.
+
+### Validation
+
+51 native tests and 64 frontend tests pass locally on Windows. Regression coverage
+includes the exact pre-fix panic, 10,000 fractional pulse frames, poisoned-state
+recovery, eight real WebView2 scenarios, and headless light/dark and edge-position
+checks. Native renderer-pointer tests verify actual window movement after
+collapse. See the [input regression audit](docs/development/input-regression.md).
+
+Versions 1.0.3 and 1.0.4 were local candidates and were not published as releases.
+
 ## [1.0.2] — 2026-11-12
 
 ### Click-through hotfix

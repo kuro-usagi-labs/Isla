@@ -10,6 +10,8 @@ mod db;
 mod models;
 mod scanner;
 mod window_manager;
+#[cfg(all(windows,feature="input-audit"))]
+mod input_audit;
 
 use audio::{list_output_devices, AudioCommand, AudioController};
 use db::Database;
@@ -87,7 +89,7 @@ fn get_initial_app_state(state: State<'_, AppState>) -> Result<InitialBootstrapP
 #[tauri::command]
 async fn set_island_bounds(state: State<'_, AppState>, bounds: window_manager::IslandBounds, regions: Option<Vec<window_manager::IslandBounds>>, expanded: bool) -> Result<(), String> {
     let regions=regions.unwrap_or_default();
-    if !bounds.valid() || regions.len()>2 || regions.iter().any(|r|!r.valid()) { return Err("Invalid island bounds".into()); }
+    if !bounds.valid() || regions.len()>8 || regions.iter().any(|r|!r.valid()) { return Err("Invalid island bounds".into()); }
     let mut window = state.window_ctrl.state.lock().map_err(|_| "Window state lock poisoned")?;
     window.update_hit_geometry(bounds,regions,expanded);
     Ok(())
@@ -841,6 +843,8 @@ fn setup_system_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> 
 
 fn main() {
     let mut context = tauri::generate_context!();
+    #[cfg(all(windows,feature="input-audit"))]
+    input_audit::configure(&mut context);
     // Enlarged taskbars/docks need a real high-resolution source, not an upscaled system 32px icon.
     context.set_default_window_icon(Some(
         tauri::image::Image::from_bytes(include_bytes!("../icons/256x256.png"))
@@ -908,6 +912,17 @@ fn main() {
             let db_path = app_data_dir.join("isla_library.sqlite3");
 
             let db = Arc::new(Database::open(&db_path)?);
+            #[cfg(all(windows,feature="input-audit"))]
+            {
+                let mut settings=AppSettings::default();
+                settings.pill_size="compact".into();settings.global_shortcuts_enabled=false;
+                settings.window_x=Some(300);settings.window_y=Some(200);
+                settings.start_expanded=false;settings.always_on_top=false;
+                if std::env::var("ISLA_AUDIT_ANCHOR").as_deref()==Ok("bottom-right") {
+                    settings.window_x=Some(10000);settings.window_y=Some(10000);
+                }
+                db.save_settings(&settings)?;
+            }
             let _ = db.verify_missing_files();
 
             let settings = db.load_settings().unwrap_or_default();
@@ -982,8 +997,12 @@ fn main() {
                 is_quitting,
             });
 
+            #[cfg(not(all(windows,feature="input-audit")))]
             let _ = setup_system_tray(app.handle());
             configure_global_shortcuts(app.handle(), settings.global_shortcuts_enabled);
+
+            #[cfg(all(windows,feature="input-audit"))]
+            input_audit::start(app.handle().clone());
 
             Ok(())
         })

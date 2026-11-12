@@ -1,9 +1,12 @@
 [package]
 name = "isla"
-version = "1.0.2"
+version = "1.0.5"
 description = "Isla — Premium Floating Offline Music Player for Windows"
 authors = ["Isla Desktop Team"]
 edition = "2021"
+
+[features]
+input-audit = []
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
